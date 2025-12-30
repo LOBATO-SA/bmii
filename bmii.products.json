@@ -1,0 +1,68 @@
+[{
+  "_id": {
+    "$oid": "6952875d5f4f6670564076e2"
+  },
+  "name": "Milho Amarelo",
+  "category": "Cereais",
+  "unit": "kg",
+  "pricePerUnit": 15,
+  "description": "Milho amarelo de alta qualidade",
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-12-29T13:51:25.349Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-29T13:51:25.349Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6952875d5f4f6670564076e3"
+  },
+  "name": "Feijão Manteiga",
+  "category": "Leguminosas",
+  "unit": "kg",
+  "pricePerUnit": 45,
+  "description": "Feijão manteiga nacional",
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6952875d5f4f6670564076e4"
+  },
+  "name": "Arroz Agulha",
+  "category": "Cereais",
+  "unit": "kg",
+  "pricePerUnit": 30,
+  "description": "Arroz agulha extra",
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6952875d5f4f6670564076e5"
+  },
+  "name": "Soja",
+  "category": "Oleaginosas",
+  "unit": "kg",
+  "pricePerUnit": 25,
+  "description": "Soja em grão",
+  "__v": 0,
+  "createdAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-29T13:51:25.350Z"
+  }
+}]
