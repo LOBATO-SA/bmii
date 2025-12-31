@@ -10,10 +10,10 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { agricultorId, agenteId, produtoId, quantidade, qualidade, precoBase } = body;
+        const { agricultorId, agenteId, produtoId, produtoNome, quantidade, qualidade, precoBase } = body;
 
         // 1. Validate input
-        if (!agricultorId || !agenteId || !produtoId || !quantidade || !qualidade || !precoBase) {
+        if (!agricultorId || !agenteId || (!produtoId && !produtoNome) || !quantidade || !qualidade || !precoBase) {
             return NextResponse.json({ success: false, error: 'Dados incompletos' }, { status: 400 });
         }
 
@@ -26,10 +26,25 @@ export async function POST(request: Request) {
         const precoFinalAplicado = precoBase * qualityMultiplier;
         const valorTotal = precoFinalAplicado * quantidade;
 
-        // 3. Fetch Product Details for snapshot
-        const productDetails = await Product.findById(produtoId);
+        // 3. Fetch or Create Product Details
+        let productDetails;
+        if (produtoId) {
+            productDetails = await Product.findById(produtoId);
+        } else if (produtoNome) {
+            // Find by name or create
+            productDetails = await Product.findOne({ nome: produtoNome });
+            if (!productDetails) {
+                productDetails = await Product.create({
+                    nome: produtoNome,
+                    categoria: 'Grão', // Default category for these commodities
+                    precoReferencia: precoBase,
+                    descricao: `Produto gerado automaticamente: ${produtoNome}`
+                });
+            }
+        }
+
         if (!productDetails) {
-            return NextResponse.json({ success: false, error: 'Produto não encontrado' }, { status: 404 });
+            return NextResponse.json({ success: false, error: 'Erro ao identificar produto' }, { status: 404 });
         }
 
         // 4. Create Deposit Record

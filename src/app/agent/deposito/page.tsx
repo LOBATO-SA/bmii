@@ -26,13 +26,19 @@ const AgentDepositoPage = () => {
 
     // Data Lists
     const [farmers, setFarmers] = useState<Farmer[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-
-    // Selections
     const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
-    const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
-    // Form Data
+    // DEFINING STATIC COMMODITIES AS REQUESTED
+    const COMMODITIES = [
+        { id: 'comm-1', nome: 'Feijão', precoReferencia: 450, imagemUrl: '/images/feijao.jpg' },
+        { id: 'comm-2', nome: 'Soja', precoReferencia: 250, imagemUrl: '/images/soja.jpg' },
+        { id: 'comm-3', nome: 'Milho', precoReferencia: 150, imagemUrl: '/images/milho.jpg' }
+    ];
+
+    const [products, setProducts] = useState<any[]>(COMMODITIES);
+    const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
+
+    // Config state for Step 3
     const [weights, setWeights] = useState<Record<string, number>>({});
     const [qualities, setQualities] = useState<Record<string, 'A' | 'B' | 'C'>>({});
 
@@ -45,16 +51,15 @@ const AgentDepositoPage = () => {
 
     const [currentUser, setCurrentUser] = useState<any>(null);
 
+    // Fetch Farmers only
     useEffect(() => {
-        const user = localStorage.getItem('user');
-        if (user) {
-            const parsedUser = JSON.parse(user);
-            setCurrentUser(parsedUser);
-            fetchInitialData(parsedUser.id);
-        }
-    }, []);
-
-    // TODO: Will be reimplemented for multi-product in step 3
+        fetch('/api/farmers')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) setFarmers(data.data);
+            })
+            .catch(err => console.error(err));
+    }, []); // TODO: Will be reimplemented for multi-product in step 3
     /*
     useEffect(() => {
         if (selectedProducts.length > 0 && weight > 0) {
@@ -165,10 +170,14 @@ const AgentDepositoPage = () => {
                 const weight = weights[prodId];
                 const quality = qualities[prodId] || 'A';
                 
+                // Check if ID is virtual (starts with 'comm-')
+                const isVirtual = prodId.toString().startsWith('comm-');
+
                 const payload = {
                     agricultorId: selectedFarmer.id || (selectedFarmer as any)._id,
                     agenteId: currentUser.id,
-                    produtoId: prodId,
+                    produtoId: isVirtual ? undefined : prodId, // Don't send virtual ID
+                    produtoNome: product.nome, // Send name for lookup/create
                     quantidade: weight,
                     qualidade: quality,
                     precoBase: product.precoReferencia
@@ -301,7 +310,6 @@ const AgentDepositoPage = () => {
                                             {product.imagemUrl ? <img src={product.imagemUrl} alt={product.nome} /> : <Package size={60} />}
                                         </div>
                                         <span className="product-name">{product.nome}</span>
-                                        <small className="product-price">{product.precoReferencia} Kz/Kg</small>
                                     </div>
                                 );
                             })}
@@ -387,14 +395,27 @@ const AgentDepositoPage = () => {
                 )}
             </div>
 
-            <div className="controls" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingBottom: '30px' }}>
+            <div className="controls" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', paddingBottom: '30px' }}>
                 {step > 1 ? (
                     <button
                         className="back-btn"
                         onClick={handleBack}
-                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                        style={{
+                            background: 'white',
+                            color: '#1a044e',
+                            border: '1px solid #1a044e',
+                            padding: '12px 24px',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                            transition: 'all 0.2s'
+                        }}
                     >
-                        <ChevronLeft /> Voltar
+                        <ChevronLeft size={20} /> Voltar
                     </button>
                 ) : <div></div>}
 
@@ -406,18 +427,46 @@ const AgentDepositoPage = () => {
                             (step === 1 && !selectedFarmer) ||
                             (step === 2 && selectedProducts.length === 0)
                         }
-                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                        style={{
+                            background: '#1a044e',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px 30px',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 10px rgba(26, 4, 78, 0.3)',
+                            fontSize: '16px',
+                            transition: 'all 0.2s'
+                        }}
                     >
-                        Próximo <ChevronRight />
+                        Próximo <ChevronRight size={20} />
                     </button>
                 ) : (
                     <button
                         className="finish-btn"
                         onClick={handleSubmit}
                         disabled={loading}
-                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                        style={{
+                            background: '#2563eb', /* Explicit blue as requested, slightly lighter than brand for action */
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px 30px',
+                            borderRadius: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)',
+                            fontSize: '16px',
+                            transition: 'all 0.2s'
+                        }}
                     >
-                        Confirmar <FileText size={18} />
+                        Confirmar <FileText size={20} />
                     </button>
                 )}
             </div>
