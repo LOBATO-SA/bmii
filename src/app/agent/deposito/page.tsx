@@ -30,9 +30,9 @@ const AgentDepositoPage = () => {
 
     // DEFINING STATIC COMMODITIES AS REQUESTED
     const COMMODITIES = [
-        { id: 'comm-1', nome: 'Feijão', precoReferencia: 450, imagemUrl: '/images/feijao.jpg' },
-        { id: 'comm-2', nome: 'Soja', precoReferencia: 250, imagemUrl: '/images/soja.jpg' },
-        { id: 'comm-3', nome: 'Milho', precoReferencia: 150, imagemUrl: '/images/milho.jpg' }
+        { id: 'comm-1', nome: 'Feijão', qtd: 0, precoReferencia: 0, imagemUrl: '/images/feijao.jpg' },
+        { id: 'comm-2', nome: 'Soja', qtd: 0, precoReferencia: 0, imagemUrl: '/images/soja.jpg' },
+        { id: 'comm-3', nome: 'Milho', qtd: 0, precoReferencia: 0, imagemUrl: '/images/milho.jpg' }
     ];
 
     const [products, setProducts] = useState<any[]>(COMMODITIES);
@@ -40,6 +40,7 @@ const AgentDepositoPage = () => {
 
     // Config state for Step 3
     const [weights, setWeights] = useState<Record<string, number>>({});
+    const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
     const [qualities, setQualities] = useState<Record<string, 'A' | 'B' | 'C'>>({});
 
     // Deprecated single state - keeping for now to avoid breaking other refs if any missed, but should be removed
@@ -103,6 +104,15 @@ const AgentDepositoPage = () => {
     const handleNext = () => {
         if (step === 1 && !selectedFarmer) return alert('Selecione um agricultor');
         if (step === 2 && selectedProducts.length === 0) return alert('Selecione pelo menos um produto');
+
+        if (step === 3) {
+            const invalidProducts = selectedProducts.filter(p => {
+                const prodId = p.id || (p as any)._id;
+                return !weights[prodId] || weights[prodId] <= 0;
+            });
+            if (invalidProducts.length > 0) return alert(`Por favor, insira o peso para: ${invalidProducts.map(p => p.nome).join(', ')}`);
+        }
+
         setStep(step + 1);
     };
 
@@ -149,14 +159,15 @@ const AgentDepositoPage = () => {
         doc.text(content, 20, 50);
         doc.save(`Recibo_${selectedFarmer?.nome}_${Date.now()}.pdf`);
     };
+    */
 
     const handleSubmit = async () => {
         if (!currentUser || !selectedFarmer || selectedProducts.length === 0) return;
 
         // Validation: Verify if all products have weight > 0
         const invalidProducts = selectedProducts.filter(p => {
-             const prodId = p.id || (p as any)._id;
-             return !weights[prodId] || weights[prodId] <= 0;
+            const prodId = p.id || (p as any)._id;
+            return !weights[prodId] || weights[prodId] <= 0;
         });
 
         if (invalidProducts.length > 0) {
@@ -169,7 +180,8 @@ const AgentDepositoPage = () => {
                 const prodId = product.id || (product as any)._id;
                 const weight = weights[prodId];
                 const quality = qualities[prodId] || 'A';
-                
+                const price = customPrices[prodId] || product.precoReferencia || 0;
+
                 // Check if ID is virtual (starts with 'comm-')
                 const isVirtual = prodId.toString().startsWith('comm-');
 
@@ -180,7 +192,7 @@ const AgentDepositoPage = () => {
                     produtoNome: product.nome, // Send name for lookup/create
                     quantidade: weight,
                     qualidade: quality,
-                    precoBase: product.precoReferencia
+                    precoBase: price
                 };
 
                 return fetch('/api/deposits', {
@@ -192,7 +204,7 @@ const AgentDepositoPage = () => {
 
             const results = await Promise.all(promises);
             const failures = results.filter(r => !r.success);
-            
+
             if (failures.length === 0) {
                 alert('Todos os depósitos foram realizados com sucesso!');
                 setStep(1);
@@ -213,7 +225,6 @@ const AgentDepositoPage = () => {
             setLoading(false);
         }
     };
-    */
 
     // Search
     const [searchTerm, setSearchTerm] = useState('');
@@ -227,7 +238,7 @@ const AgentDepositoPage = () => {
         <StyledPage>
             <div className="header">
                 <h1>DEPÓSITO DE MERCADORIA</h1>
-                <p>Passo {step} de 3</p>
+                <p>Passo {step} de 4</p>
             </div>
 
 
@@ -325,7 +336,8 @@ const AgentDepositoPage = () => {
                                 const prodId = product.id || (product as any)._id;
                                 const w = weights[prodId] || 0;
                                 const q = qualities[prodId] || 'A';
-                                const price = (product.precoReferencia * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                const basePrice = customPrices[prodId] || product.precoReferencia || 0;
+                                const price = (basePrice * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
                                 const total = Math.round(price * w);
 
                                 return (
@@ -353,6 +365,21 @@ const AgentDepositoPage = () => {
                                                     />
                                                 </div>
                                                 <div className="group">
+                                                    <label>Preço Unitário (Kz)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="0"
+                                                        value={customPrices[prodId] || product.precoReferencia || ''}
+                                                        onChange={(e) => {
+                                                            const newPrices = { ...customPrices, [prodId]: Number(e.target.value) };
+                                                            setCustomPrices(newPrices);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="input-row">
+                                                <div className="group">
                                                     <label>Qualidade</label>
                                                     <div className="quality-mini-selector">
                                                         {['A', 'B', 'C'].map((opt) => (
@@ -369,8 +396,9 @@ const AgentDepositoPage = () => {
                                                     </div>
                                                 </div>
                                             </div>
+
                                             <div className="item-total">
-                                                <span>Total:</span>
+                                                <span>Total Estimado:</span>
                                                 <strong>{total.toLocaleString('pt-AO')} Kz</strong>
                                             </div>
                                         </div>
@@ -379,13 +407,72 @@ const AgentDepositoPage = () => {
                             })}
 
                             <div className="total-display compact">
-                                <span>Total Geral a Pagar</span>
-                                <h1>{
+                                <span style={{ color: '#000000ff' }}>Total Geral a Pagar</span>
+                                <h1 style={{ color: '#000000ff' }}>{
                                     selectedProducts.reduce((acc, p) => {
                                         const prodId = p.id || (p as any)._id;
                                         const w = weights[prodId] || 0;
                                         const q = qualities[prodId] || 'A';
-                                        const price = (p.precoReferencia * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                        const basePrice = customPrices[prodId] || p.precoReferencia || 0;
+                                        const price = (basePrice * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                        return acc + Math.round(price * w);
+                                    }, 0).toLocaleString('pt-AO')
+                                } Kz</h1>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* STEP 4: CONFIRMATION */}
+                {step === 4 && (
+                    <div className="step-content fade-in">
+                        <h2>4. Confirmação de Depósito</h2>
+                        <div className="bill-summary">
+                            <div className="summary-header" style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '15px', marginBottom: '15px' }}>
+                                <h3 style={{ margin: 0, color: '#1a044e' }}>Resumo da Operação</h3>
+                                <span style={{ color: '#666', fontSize: '14px' }}>{new Date().toLocaleDateString()}</span>
+                            </div>
+
+                            <div className="farmer-summary" style={{ display: 'flex', gap: '15px', paddingBottom: '20px', borderBottom: '1px solid #e5e7eb', marginBottom: '20px' }}>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eee', overflow: 'hidden' }}>
+                                    {selectedFarmer?.fotoUrl ? <img src={selectedFarmer.fotoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={50} />}
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: '0 0 5px 0', color: '#000' }}>{selectedFarmer?.nome}</h4>
+                                    <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>BI: {selectedFarmer?.bi}</p>
+                                </div>
+                            </div>
+
+                            <div className="items-summary">
+                                <h4 style={{ fontSize: '14px', color: '#666', textTransform: 'uppercase', marginBottom: '10px' }}>Itens a Depositar</h4>
+                                {selectedProducts.map((product) => {
+                                    const prodId = product.id || (product as any)._id;
+                                    const w = weights[prodId] || 0;
+                                    const q = qualities[prodId] || 'A';
+                                    const basePrice = customPrices[prodId] || product.precoReferencia || 0;
+                                    const price = (basePrice * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                    const total = Math.round(price * w);
+
+                                    return (
+                                        <div key={prodId} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '15px' }}>
+                                            <div>
+                                                <strong style={{ display: 'block', color: '#000' }}>{product.nome}</strong>
+                                                <span style={{ fontSize: '13px', color: '#666' }}>{w} Kg x {price.toLocaleString('pt-AO')} Kz ({q})</span>
+                                            </div>
+                                            <strong style={{ color: '#000' }}>{total.toLocaleString('pt-AO')} Kz</strong>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="total-display compact" style={{ marginTop: '20px' }}>
+                                <span style={{ color: '#000000ff' }}>Total Geral a Pagar</span>
+                                <h1 style={{ color: '#000000ff' }}>{
+                                    selectedProducts.reduce((acc, p) => {
+                                        const prodId = p.id || (p as any)._id;
+                                        const w = weights[prodId] || 0;
+                                        const q = qualities[prodId] || 'A';
+                                        const basePrice = customPrices[prodId] || p.precoReferencia || 0;
+                                        const price = (basePrice * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
                                         return acc + Math.round(price * w);
                                     }, 0).toLocaleString('pt-AO')
                                 } Kz</h1>
@@ -419,7 +506,7 @@ const AgentDepositoPage = () => {
                     </button>
                 ) : <div></div>}
 
-                {step < 3 ? (
+                {step < 4 ? (
                     <button
                         className="next-btn"
                         onClick={handleNext}
@@ -466,7 +553,7 @@ const AgentDepositoPage = () => {
                             transition: 'all 0.2s'
                         }}
                     >
-                        Confirmar <FileText size={20} />
+                        Confirmar Depósito <FileText size={20} />
                     </button>
                 )}
             </div>
@@ -587,6 +674,10 @@ const StyledPage = styled.div`
             background: #eef2ff;
             box-shadow: 0 4px 12px rgba(26,4,78,0.15);
         }
+
+        /* Update to prevent large images in Step 2 if shared styles, 
+           but specifically requested for Step 3. 
+           Will rely on specific container classes for Step 3 overrides below. */
 
         .checkbox-indicator {
             position: absolute;
@@ -725,6 +816,134 @@ const StyledPage = styled.div`
             &:disabled { opacity: 0.5; cursor: not-allowed; }
             &:hover:not(:disabled) { transform: translateY(-2px); }
         }
+        }
+    }
+
+    /* STEP 3 SPECIFIC STYLES */
+    .config-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .config-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+
+    .config-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px 20px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        
+        span {
+            font-weight: bold;
+            color: #1a044e;
+            font-size: 14px;
+        }
+    }
+
+    .prod-info-mini {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        img, .fallback-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e5e7eb;
+            background: white;
+        }
+
+        h4 {
+            margin: 0;
+            font-size: 16px;
+            color: #000; /* Black text as requested */
+        }
+    }
+
+    .config-body {
+        padding: 20px;
+    }
+
+    .input-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .group {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #000; /* Black label */
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            outline: none;
+            transition: all 0.2s;
+
+            &:focus {
+                border-color: #1a044e;
+                background: #fdfcff;
+            }
+        }
+    }
+
+    .quality-mini-selector {
+        display: flex;
+        gap: 5px;
+        
+        button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &.active {
+                background: #1a044e;
+                color: white;
+                border-color: #1a044e;
+            }
+        }
+    }
+
+    .item-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 15px;
+        border-top: 1px dashed #e5e7eb;
+        
+        span { color: #666; font-size: 14px; }
+        strong { color: #059669; font-size: 18px; }
     }
 
     @keyframes fadeIn {
