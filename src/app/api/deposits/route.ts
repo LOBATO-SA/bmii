@@ -4,6 +4,25 @@ import Deposit from '@/models/Deposit';
 import Farmer from '@/models/Farmer';
 import Product from '@/models/Product';
 
+// GET: List deposits (optionally filter by farmer)
+export async function GET(request: Request) {
+    await dbConnect();
+    const { searchParams } = new URL(request.url);
+    const agricultorId = searchParams.get('agricultorId');
+
+    try {
+        const query = agricultorId ? { agricultor: agricultorId } : {};
+        const deposits = await Deposit.find(query)
+            .populate('agricultor', 'nome')
+            .populate('agente', 'nome')
+            .sort({ dataDeposito: -1 });
+
+        return NextResponse.json({ success: true, data: deposits });
+    } catch (error: any) {
+        return NextResponse.json({ success: false, error: 'Erro ao buscar depósitos' }, { status: 400 });
+    }
+}
+
 // POST: Register a new deposit
 export async function POST(request: Request) {
     await dbConnect();

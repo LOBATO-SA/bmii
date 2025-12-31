@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { Camera, Upload, UserPlus, Save, X, Search, MapPin, Phone, User, CheckCircle, FileText, LayoutGrid, List } from 'lucide-react';
+import { Camera, Upload, UserPlus, Save, X, Search, MapPin, Phone, User, CheckCircle, FileText, LayoutGrid, List, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
+import Link from 'next/link';
 
 interface Farmer {
     id: string;
@@ -388,13 +389,20 @@ ENTRE:
                                 <span className="status-active">
                                     <CheckCircle size={12} /> ATIVO
                                 </span>
-                                <button
-                                    onClick={() => generateContract(farmer)}
-                                    className="download-btn"
-                                    title="Baixar Contrato"
-                                >
-                                    <FileText size={14} /> Contrato
-                                </button>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <Link href={`/agent/conta/${farmer.id || (farmer as any)._id}`}>
+                                        <button className="download-btn" title="Ver Detalhes">
+                                            <Eye size={14} /> Ver
+                                        </button>
+                                    </Link>
+                                    <button
+                                        onClick={() => generateContract(farmer)}
+                                        className="download-btn"
+                                        title="Baixar Contrato"
+                                    >
+                                        <FileText size={14} /> Contrato
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -436,13 +444,20 @@ ENTRE:
                                         <span className="status-badge-mini">Ativo</span>
                                     </td>
                                     <td>
-                                        <button
-                                            className="action-icon-btn"
-                                            onClick={() => generateContract(farmer)}
-                                            title="Baixar Contrato"
-                                        >
-                                            <FileText size={18} />
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <Link href={`/agent/conta/${farmer.id || (farmer as any)._id}`}>
+                                                <button className="action-icon-btn" title="Ver Detalhes">
+                                                    <Eye size={18} />
+                                                </button>
+                                            </Link>
+                                            <button
+                                                className="action-icon-btn"
+                                                onClick={() => generateContract(farmer)}
+                                                title="Baixar Contrato"
+                                            >
+                                                <FileText size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -529,449 +544,449 @@ ENTRE:
 };
 
 const StyledPage = styled.div`
-  max-width: 1200px;
-  margin: 0 0;
-  padding: 20px;
-
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .header-content h1 {
-    font-size: 24px;
-    font-weight: 900;
-    color: #1a044e;
-    letter-spacing: 1px;
-    margin: 0;
-  }
-
-  .header-content p {
-    color: #6b7280;
-    font-size: 14px;
-    margin: 4px 0 0;
-  }
-
-  .add-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #1a044e;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-  }
-
-  /* Toolbar */
-  .toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-      gap: 20px;
-      background: white;
-      padding: 10px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-  }
-
-  .search-box {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #9ca3af;
-      
-      input {
-          border: none;
-          outline: none;
-          font-size: 15px;
-          width: 100%;
-          color: #1f2937;
-      }
-  }
-
-  .view-toggle {
-      display: flex;
-      gap: 5px;
-      background: #f3f4f6;
-      padding: 4px;
-      border-radius: 8px;
-
-      button {
-          background: none;
-          border: none;
-          padding: 6px;
-          border-radius: 6px;
-          color: #6b7280;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          
-          &:hover { background: #e5e7eb; }
-          &.active { background: white; color: #1a044e; shadow: 0 2px 4px rgba(0,0,0,0.1); }
-      }
-  }
-
-  /* Grid View */
-  .farmers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-  }
-
-  .farmer-card {
-    background: white;
-    border-radius: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-    border: 1px solid #f3f4f6;
-    transition: transform 0.2s;
-    &:hover { transform: translateY(-2px); }
-  }
 
-  /* List View */
-  .farmers-list-container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-      border: 1px solid #f3f4f6;
-      overflow: hidden;
-  }
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
 
-  .farmers-table {
-      width: 100%;
-      border-collapse: collapse;
-      
-      th {
-          text-align: left;
-          padding: 15px 20px;
-          font-size: 12px;
-          color: #6b7280;
-          text-transform: uppercase;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
-      }
+    .header-content h1 {
+        font-size: 24px;
+        font-weight: 900;
+        color: #1a044e;
+        letter-spacing: 1px;
+        margin: 0;
+    }
 
-      td {
-          padding: 15px 20px;
-          border-bottom: 1px solid #f3f4f6;
-          font-size: 14px;
-          color: #1f2937;
-      }
+    .header-content p {
+        color: #6b7280;
+        font-size: 14px;
+        margin: 4px 0 0;
+    }
 
-      tr:last-child td { border-bottom: none; }
-      tr:hover { background: #f9fafb; }
-  }
-  
-  .table-user-cell {
-      display: flex; align-items: center; gap: 12px;
-      font-weight: 600;
-  }
+    .add-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #1a044e;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+    }
 
-  .avatar-mini {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #eee; overflow: hidden; display: flex; align-items: center; justify-content: center;
-      img { width: 100%; height: 100%; object-fit: cover; }
-  }
+    /* Toolbar */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        gap: 20px;
+        background: white;
+        padding: 10px 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
 
-  .status-badge-mini {
-      background: #d1fae5; color: #059669; 
-      padding: 2px 8px; border-radius: 10px; 
-      font-size: 11px; font-weight: 700;
-  }
+    .search-box {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #9ca3af;
 
-  .action-icon-btn {
-      background: white; border: 1px solid #e5e7eb;
-      color: #1a044e; width: 32px; height: 32px;
-      border-radius: 8px; display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all 0.2s;
-      
-      &:hover { background: #eff6ff; border-color: #dbeafe; }
-  }
+        input {
+            border: none;
+            outline: none;
+            font-size: 15px;
+            width: 100%;
+            color: #1f2937;
+        }
+    }
 
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 15px;
-  }
+    .view-toggle {
+        display: flex;
+        gap: 5px;
+        background: #f3f4f6;
+        padding: 4px;
+        border-radius: 8px;
 
-  .farmer-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: #f3f4f6;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+        button {
+            background: none;
+            border: none;
+            padding: 6px;
+            border-radius: 6px;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
-  .farmer-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+            &:hover { background: #e5e7eb; }
+            &.active { background: white; color: #1a044e; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        }
+    }
 
-  .farmer-info h3 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    font-weight: 700;
-    color: #1f2937;
-  }
+    /* Grid View */
+    .farmers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
 
-  .bi-badge {
-    font-size: 11px;
-    background: #e5e7eb;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    color: #4b5563;
-  }
+    .farmer-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        border: 1px solid #f3f4f6;
+        transition: transform 0.2s;
+        &:hover { transform: translateY(-2px); }
+    }
 
-  .card-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 15px;
-  }
+    /* List View */
+    .farmers-list-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        border: 1px solid #f3f4f6;
+        overflow: hidden;
+    }
 
-  .detail-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #6b7280;
-  }
+    .farmers-table {
+        width: 100%;
+        border-collapse: collapse;
 
-  .card-footer {
-    border-top: 1px solid #f3f4f6;
-    padding-top: 15px;
-    display: flex;
-    justify-content: space-between;
-  }
+        th {
+            text-align: left;
+            padding: 15px 20px;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
 
-  .status-active {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #059669;
-    background: #d1fae5;
-    padding: 4px 8px;
-    border-radius: 10px;
-  }
+        td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 14px;
+            color: #1f2937;
+        }
 
-  .download-btn {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: #eff6ff;
-    color: #1a044e;
-    border: 1px solid #dbeafe;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: #f9fafb; }
+    }
 
-  .download-btn:hover {
-    background: #dbeafe;
-    transform: translateY(-1px);
-  }
+    .table-user-cell {
+        display: flex; align-items: center; gap: 12px;
+        font-weight: 600;
+    }
 
-  /* Modal */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-    backdrop-filter: blur(4px);
-  }
+    .avatar-mini {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: #eee; overflow: hidden; display: flex; align-items: center; justify-content: center;
+        img { width: 100%; height: 100%; object-fit: cover; }
+    }
 
-  .modal-card {
-    background: white;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 20px;
-    padding: 30px;
-    position: relative;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
+    .status-badge-mini {
+        background: #d1fae5; color: #059669;
+        padding: 2px 8px; border-radius: 10px;
+        font-size: 11px; font-weight: 700;
+    }
 
-  .close-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #9ca3af;
-  }
+    .action-icon-btn {
+        background: white; border: 1px solid #e5e7eb;
+        color: #1a044e; width: 32px; height: 32px;
+        border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all 0.2s;
 
-  .modal-card h2 {
-    margin: 0 0 25px 0;
-    font-size: 20px;
-    color: #1a044e;
-    font-weight: 800;
-    text-align: center;
-  }
+        &:hover { background: #eff6ff; border-color: #dbeafe; }
+    }
 
-  .photo-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 25px;
-  }
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
 
-  .camera-container, .photo-preview-container {
-    width: 320px;
-    height: 240px;
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .photo-preview-container {
-      background: #f9fafb;
-      border: 2px dashed #d1d5db;
-  }
+    .farmer-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-  .photo-preview {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+    .farmer-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
 
-  .photo-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: #9ca3af;
-    gap: 10px;
-  }
+    .farmer-info h3 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #1f2937;
+    }
 
-  .photo-actions {
-    position: absolute;
-    bottom: 20px;
-    display: flex;
-    gap: 10px;
-  }
+    .bi-badge {
+        font-size: 11px;
+        background: #e5e7eb;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #4b5563;
+    }
 
-  .photo-action-btn {
-    background: rgba(255,255,255,0.9);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #1f2937;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
+    .card-details {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 15px;
+    }
 
-  .capture-btn {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      border: none;
-      border-radius: 30px;
-      padding: 10px 20px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-  }
-  
-  .cancel-camera-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0,0,0,0.5);
-      color: white;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-  }
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: #6b7280;
+    }
 
-  .farmer-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
+    .card-footer {
+        border-top: 1px solid #f3f4f6;
+        padding-top: 15px;
+        display: flex;
+        justify-content: space-between;
+    }
 
-  .form-grid {
-    display: grid;
-    gap: 15px;
-  }
+    .status-active {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #059669;
+        background: #d1fae5;
+        padding: 4px 8px;
+        border-radius: 10px;
+    }
 
-  .form-group label {
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: #6b7280;
-    margin-bottom: 6px;
-    letter-spacing: 0.5px;
-  }
+    .download-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: #eff6ff;
+        color: #1a044e;
+        border: 1px solid #dbeafe;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-  .form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    font-size: 14px;
-    outline: none;
-    transition: all 0.2s;
-    color: #000000;
-  }
+    .download-btn:hover {
+        background: #dbeafe;
+        transform: translateY(-1px);
+    }
 
-  .form-group input:focus {
-    border-color: #1a044e;
-    box-shadow: 0 0 0 3px rgba(26, 4, 78, 0.1);
-  }
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+        backdrop-filter: blur(4px);
+    }
 
-  .submit-btn {
-    background: linear-gradient(135deg, #0f0092 0%, #1a044e 100%);
-    color: white;
-    border: none;
-    padding: 16px;
-    border-radius: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 10px;
-  }
+    .modal-card {
+        background: white;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 20px;
+        padding: 30px;
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
 
-  .submit-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
+    .close-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #9ca3af;
+    }
+
+    .modal-card h2 {
+        margin: 0 0 25px 0;
+        font-size: 20px;
+        color: #1a044e;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .photo-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .camera-container, .photo-preview-container {
+        width: 320px;
+        height: 240px;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .photo-preview-container {
+        background: #f9fafb;
+        border: 2px dashed #d1d5db;
+    }
+
+    .photo-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .photo-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #9ca3af;
+        gap: 10px;
+    }
+
+    .photo-actions {
+        position: absolute;
+        bottom: 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .photo-action-btn {
+        background: rgba(255,255,255,0.9);
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1f2937;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .capture-btn {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        border: none;
+        border-radius: 30px;
+        padding: 10px 20px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .cancel-camera-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .farmer-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-grid {
+        display: grid;
+        gap: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 6px;
+        letter-spacing: 0.5px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+        color: #000000;
+    }
+
+    .form-group input:focus {
+        border-color: #1a044e;
+        box-shadow: 0 0 0 3px rgba(26, 4, 78, 0.1);
+    }
+
+    .submit-btn {
+        background: linear-gradient(135deg, #0f0092 0%, #1a044e 100%);
+        color: white;
+        border: none;
+        padding: 16px;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    .submit-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
 `;
 
 export default AgentContaPage;
