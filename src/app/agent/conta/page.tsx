@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { Camera, Upload, UserPlus, Save, X, Search, MapPin, Phone, User, CheckCircle, FileText } from 'lucide-react';
+import { Camera, Upload, UserPlus, Save, X, Search, MapPin, Phone, User, CheckCircle, FileText, LayoutGrid, List } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 interface Farmer {
@@ -19,6 +19,7 @@ const AgentContaPage = () => {
     const [farmers, setFarmers] = useState<Farmer[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -307,6 +308,11 @@ ENTRE:
         doc.save(`Contrato_BMII_${farmer.nome.replace(/\s+/g, '_')}.pdf`);
     };
 
+    const filteredFarmers = farmers.filter(f =>
+        f.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.bi.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <StyledPage>
             <div className="page-header">
@@ -320,53 +326,135 @@ ENTRE:
                 </button>
             </div>
 
-            {/* Farmers Grid */}
-            <div className="farmers-grid">
-                {farmers.map(farmer => (
-                    <div key={farmer.id || Math.random()} className="farmer-card">
-                        <div className="card-header">
-                            <div className="farmer-avatar">
-                                {farmer.fotoUrl ? (
-                                    <img src={farmer.fotoUrl} alt={farmer.nome} />
-                                ) : (
-                                    <User size={32} />
-                                )}
-                            </div>
-                            <div className="farmer-info">
-                                <h3>{farmer.nome}</h3>
-                                <span className="bi-badge">BI: {farmer.bi}</span>
-                            </div>
-                        </div>
-                        <div className="card-details">
-                            <div className="detail-item">
-                                <Phone size={14} />
-                                <span>{farmer.telefone}</span>
-                            </div>
-                            <div className="detail-item">
-                                <MapPin size={14} />
-                                <span>{farmer.endereco}</span>
-                            </div>
-                        </div>
-                        <div className="card-footer">
-                            <span className="status-active">
-                                <CheckCircle size={12} /> ATIVO
-                            </span>
-                            <button
-                                onClick={() => generateContract(farmer)}
-                                className="download-btn"
-                                title="Baixar Contrato"
-                            >
-                                <FileText size={14} /> Contrato
-                            </button>
-                        </div>
-                    </div>
-                ))}
-                {farmers.length === 0 && !loading && (
-                    <div className="empty-state">
-                        <p>Nenhum agricultor registado.</p>
-                    </div>
-                )}
+            {/* Toolbar: Search and View Toggle */}
+            <div className="toolbar">
+                <div className="search-box">
+                    <Search size={18} />
+                    <input
+                        type="text"
+                        placeholder="Pesquisar por nome ou BI..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="view-toggle">
+                    <button
+                        className={viewMode === 'grid' ? 'active' : ''}
+                        onClick={() => setViewMode('grid')}
+                        title="Visualização em Grade"
+                    >
+                        <LayoutGrid size={20} />
+                    </button>
+                    <button
+                        className={viewMode === 'list' ? 'active' : ''}
+                        onClick={() => setViewMode('list')}
+                        title="Visualização em Lista"
+                    >
+                        <List size={20} />
+                    </button>
+                </div>
             </div>
+
+            {/* Content: Grid or List */}
+            {viewMode === 'grid' ? (
+                /* Grid View */
+                <div className="farmers-grid">
+                    {filteredFarmers.map(farmer => (
+                        <div key={farmer.id || Math.random()} className="farmer-card">
+                            <div className="card-header">
+                                <div className="farmer-avatar">
+                                    {farmer.fotoUrl ? (
+                                        <img src={farmer.fotoUrl} alt={farmer.nome} />
+                                    ) : (
+                                        <User size={32} />
+                                    )}
+                                </div>
+                                <div className="farmer-info">
+                                    <h3>{farmer.nome}</h3>
+                                    <span className="bi-badge">BI: {farmer.bi}</span>
+                                </div>
+                            </div>
+                            <div className="card-details">
+                                <div className="detail-item">
+                                    <Phone size={14} />
+                                    <span>{farmer.telefone}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <MapPin size={14} />
+                                    <span>{farmer.endereco}</span>
+                                </div>
+                            </div>
+                            <div className="card-footer">
+                                <span className="status-active">
+                                    <CheckCircle size={12} /> ATIVO
+                                </span>
+                                <button
+                                    onClick={() => generateContract(farmer)}
+                                    className="download-btn"
+                                    title="Baixar Contrato"
+                                >
+                                    <FileText size={14} /> Contrato
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {filteredFarmers.length === 0 && !loading && (
+                        <div className="empty-state">
+                            <p>Nenhum agricultor encontrado.</p>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* List View */
+                <div className="farmers-list-container">
+                    <table className="farmers-table">
+                        <thead>
+                            <tr>
+                                <th>Agricultor</th>
+                                <th>BI</th>
+                                <th>Telefone</th>
+                                <th>Endereço</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredFarmers.map(farmer => (
+                                <tr key={farmer.id || Math.random()}>
+                                    <td>
+                                        <div className="table-user-cell">
+                                            <div className="avatar-mini">
+                                                {farmer.fotoUrl ? <img src={farmer.fotoUrl} /> : <User size={16} />}
+                                            </div>
+                                            <span>{farmer.nome}</span>
+                                        </div>
+                                    </td>
+                                    <td>{farmer.bi}</td>
+                                    <td>{farmer.telefone}</td>
+                                    <td>{farmer.endereco}</td>
+                                    <td>
+                                        <span className="status-badge-mini">Ativo</span>
+                                    </td>
+                                    <td>
+                                        <button
+                                            className="action-icon-btn"
+                                            onClick={() => generateContract(farmer)}
+                                            title="Baixar Contrato"
+                                        >
+                                            <FileText size={18} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {filteredFarmers.length === 0 && !loading && (
+                        <div className="empty-state">
+                            <p>Nenhum agricultor encontrado.</p>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Modal */}
             {isModalOpen && (
@@ -449,7 +537,7 @@ const StyledPage = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
   }
   
   .header-content h1 {
@@ -479,6 +567,59 @@ const StyledPage = styled.div`
     cursor: pointer;
   }
 
+  /* Toolbar */
+  .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      gap: 20px;
+      background: white;
+      padding: 10px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+  }
+
+  .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #9ca3af;
+      
+      input {
+          border: none;
+          outline: none;
+          font-size: 15px;
+          width: 100%;
+          color: #1f2937;
+      }
+  }
+
+  .view-toggle {
+      display: flex;
+      gap: 5px;
+      background: #f3f4f6;
+      padding: 4px;
+      border-radius: 8px;
+
+      button {
+          background: none;
+          border: none;
+          padding: 6px;
+          border-radius: 6px;
+          color: #6b7280;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          
+          &:hover { background: #e5e7eb; }
+          &.active { background: white; color: #1a044e; shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      }
+  }
+
+  /* Grid View */
   .farmers-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -491,6 +632,68 @@ const StyledPage = styled.div`
     padding: 20px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.05);
     border: 1px solid #f3f4f6;
+    transition: transform 0.2s;
+    &:hover { transform: translateY(-2px); }
+  }
+
+  /* List View */
+  .farmers-list-container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      border: 1px solid #f3f4f6;
+      overflow: hidden;
+  }
+
+  .farmers-table {
+      width: 100%;
+      border-collapse: collapse;
+      
+      th {
+          text-align: left;
+          padding: 15px 20px;
+          font-size: 12px;
+          color: #6b7280;
+          text-transform: uppercase;
+          background: #f9fafb;
+          border-bottom: 1px solid #e5e7eb;
+      }
+
+      td {
+          padding: 15px 20px;
+          border-bottom: 1px solid #f3f4f6;
+          font-size: 14px;
+          color: #1f2937;
+      }
+
+      tr:last-child td { border-bottom: none; }
+      tr:hover { background: #f9fafb; }
+  }
+  
+  .table-user-cell {
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 600;
+  }
+
+  .avatar-mini {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #eee; overflow: hidden; display: flex; align-items: center; justify-content: center;
+      img { width: 100%; height: 100%; object-fit: cover; }
+  }
+
+  .status-badge-mini {
+      background: #d1fae5; color: #059669; 
+      padding: 2px 8px; border-radius: 10px; 
+      font-size: 11px; font-weight: 700;
+  }
+
+  .action-icon-btn {
+      background: white; border: 1px solid #e5e7eb;
+      color: #1a044e; width: 32px; height: 32px;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s;
+      
+      &:hover { background: #eff6ff; border-color: #dbeafe; }
   }
 
   .card-header {
