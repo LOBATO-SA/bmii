@@ -33,8 +33,13 @@ const AgentDepositoPage = () => {
     const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
     // Form Data
+    const [weights, setWeights] = useState<Record<string, number>>({});
+    const [qualities, setQualities] = useState<Record<string, 'A' | 'B' | 'C'>>({});
+
+    // Deprecated single state - keeping for now to avoid breaking other refs if any missed, but should be removed
     const [weight, setWeight] = useState<number>(0);
     const [quality, setQuality] = useState<'A' | 'B' | 'C'>('A');
+
     const [finalPrice, setFinalPrice] = useState<number>(0);
     const [totalValue, setTotalValue] = useState<number>(0);
 
@@ -141,40 +146,57 @@ const AgentDepositoPage = () => {
     };
 
     const handleSubmit = async () => {
-        if (!currentUser || !selectedFarmer || !selectedProduct) return;
+        if (!currentUser || !selectedFarmer || selectedProducts.length === 0) return;
+
+        // Validation: Verify if all products have weight > 0
+        const invalidProducts = selectedProducts.filter(p => {
+             const prodId = p.id || (p as any)._id;
+             return !weights[prodId] || weights[prodId] <= 0;
+        });
+
+        if (invalidProducts.length > 0) {
+            return alert(`Por favor, insira o peso para: ${invalidProducts.map(p => p.nome).join(', ')}`);
+        }
 
         setLoading(true);
         try {
-            const payload = {
-                agricultorId: selectedFarmer.id,
-                agenteId: currentUser.id,
-                produtoId: selectedProduct.id,
-                quantidade: weight,
-                qualidade: quality,
-                precoBase: selectedProduct.precoReferencia
-            };
+            const promises = selectedProducts.map(product => {
+                const prodId = product.id || (product as any)._id;
+                const weight = weights[prodId];
+                const quality = qualities[prodId] || 'A';
+                
+                const payload = {
+                    agricultorId: selectedFarmer.id || (selectedFarmer as any)._id,
+                    agenteId: currentUser.id,
+                    produtoId: prodId,
+                    quantidade: weight,
+                    qualidade: quality,
+                    precoBase: product.precoReferencia
+                };
 
-            const res = await fetch('/api/deposits', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                return fetch('/api/deposits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(res => res.json());
             });
 
-            const data = await res.json();
-
-            if (data.success) {
-                // Generate PDF Invoice
-                generateInvoice(data.data.deposit, data.data.newBalance);
-
-                alert('Depósito realizado com sucesso!');
+            const results = await Promise.all(promises);
+            const failures = results.filter(r => !r.success);
+            
+            if (failures.length === 0) {
+                alert('Todos os depósitos foram realizados com sucesso!');
                 setStep(1);
                 setSelectedFarmer(null);
-                setSelectedProduct(null);
-                setWeight(0);
+                setSelectedProducts([]);
+                setWeights({});
+                setQualities({});
                 setTotalValue(0);
             } else {
-                alert(data.error || 'Erro ao realizar depósito');
+                console.error('Falhas:', failures);
+                alert(`Alguns depósitos falharam. Sucesso: ${results.length - failures.length}/${results.length}. Verifique o console.`);
             }
+
         } catch (error) {
             console.error(error);
             alert('Erro de conexão');
@@ -198,6 +220,8 @@ const AgentDepositoPage = () => {
                 <h1>DEPÓSITO DE MERCADORIA</h1>
                 <p>Passo {step} de 3</p>
             </div>
+
+
 
             <div className="carousel-container">
                 {/* STEP 1: SELECT FARMER */}
@@ -284,27 +308,121 @@ const AgentDepositoPage = () => {
                         </div>
                     </div>
                 )}
+                {/* STEP 3: CONFIGURE PRODUCTS */}
+                {step === 3 && (
+                    <div className="step-content fade-in">
+                        <h2>3. Configuração de Depósito</h2>
+                        <div className="config-list">
+                            {selectedProducts.map((product) => {
+                                const prodId = product.id || (product as any)._id;
+                                const w = weights[prodId] || 0;
+                                const q = qualities[prodId] || 'A';
+                                const price = (product.precoReferencia * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                const total = Math.round(price * w);
+
+                                return (
+                                    <div key={prodId} className="config-card">
+                                        <div className="config-header">
+                                            <div className="prod-info-mini">
+                                                {product.imagemUrl ? <img src={product.imagemUrl} /> : <Package size={20} />}
+                                                <h4>{product.nome}</h4>
+                                            </div>
+                                            <span>{product.precoReferencia} Kz/Kg</span>
+                                        </div>
+                                        <div className="config-body">
+                                            <div className="input-row">
+                                                <div className="group">
+                                                    <label>Peso (Kg)</label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="0"
+                                                        value={w || ''}
+                                                        onChange={(e) => {
+                                                            const newWeights = { ...weights, [prodId]: Number(e.target.value) };
+                                                            setWeights(newWeights);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="group">
+                                                    <label>Qualidade</label>
+                                                    <div className="quality-mini-selector">
+                                                        {['A', 'B', 'C'].map((opt) => (
+                                                            <button
+                                                                key={opt}
+                                                                className={q === opt ? 'active' : ''}
+                                                                onClick={() => {
+                                                                    setQualities({ ...qualities, [prodId]: opt as any });
+                                                                }}
+                                                            >
+                                                                {opt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="item-total">
+                                                <span>Total:</span>
+                                                <strong>{total.toLocaleString('pt-AO')} Kz</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            <div className="total-display compact">
+                                <span>Total Geral a Pagar</span>
+                                <h1>{
+                                    selectedProducts.reduce((acc, p) => {
+                                        const prodId = p.id || (p as any)._id;
+                                        const w = weights[prodId] || 0;
+                                        const q = qualities[prodId] || 'A';
+                                        const price = (p.precoReferencia * (q === 'A' ? 1 : q === 'B' ? 0.9 : 0.8));
+                                        return acc + Math.round(price * w);
+                                    }, 0).toLocaleString('pt-AO')
+                                } Kz</h1>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div className="controls" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', width: '100%' }}>
-                {step > 1 && (
-                    <button className="back-btn" onClick={handleBack}>
+            <div className="controls" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingBottom: '30px' }}>
+                {step > 1 ? (
+                    <button
+                        className="back-btn"
+                        onClick={handleBack}
+                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                    >
                         <ChevronLeft /> Voltar
                     </button>
-                )}
+                ) : <div></div>}
 
-                <button
-                    className="next-btn"
-                    onClick={handleNext}
-                    disabled={
-                        (step === 1 && !selectedFarmer) ||
-                        (step === 2 && selectedProducts.length === 0)
-                    }
-                    style={{ marginLeft: step === 1 ? 'auto' : '0' }}
-                >
-                    Próximo <ChevronRight />
-                </button>
+                {step < 3 ? (
+                    <button
+                        className="next-btn"
+                        onClick={handleNext}
+                        disabled={
+                            (step === 1 && !selectedFarmer) ||
+                            (step === 2 && selectedProducts.length === 0)
+                        }
+                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                    >
+                        Próximo <ChevronRight />
+                    </button>
+                ) : (
+                    <button
+                        className="finish-btn"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        style={{ background: '#000', color: 'white', border: '1px solid #000' }}
+                    >
+                        Confirmar <FileText size={18} />
+                    </button>
+                )}
             </div>
+
+
         </StyledPage>
     );
 };
@@ -565,6 +683,58 @@ const StyledPage = styled.div`
         to { opacity: 1; transform: translateY(0); }
     }
     .fade-in { animation: fadeIn 0.3s ease-out; }
+    .config-list {
+        display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px;
+    }
+
+    .config-card {
+        background: white; border: 1px solid #eee; border-radius: 12px;
+        overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .config-header {
+        background: #f8f9fa; padding: 10px 15px;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid #eee;
+        
+        .prod-info-mini {
+            display: flex; align-items: center; gap: 10px;
+            img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; }
+            h4 { margin: 0; font-size: 14px; }
+        }
+        span { font-size: 12px; color: #666; }
+    }
+
+    .config-body { padding: 15px; }
+
+    .input-row {
+        display: flex; gap: 15px; margin-bottom: 10px;
+        .group { flex: 1; label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; } }
+        input { 
+            width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; 
+            font-size: 14px; outline: none; &:focus { border-color: #1a044e; }
+        }
+    }
+
+    .quality-mini-selector {
+        display: flex; gap: 5px;
+        button {
+            flex: 1; padding: 8px 0; border: 1px solid #ddd; border-radius: 6px; background: white;
+            font-size: 12px; font-weight: bold; cursor: pointer;
+            &.active { background: #1a044e; color: white; border-color: #1a044e; }
+        }
+    }
+
+    .item-total {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee;
+        font-size: 13px;
+    }
+
+    .total-display.compact {
+        padding: 15px;
+        h1 { font-size: 20px; }
+    }
 `;
 
 export default AgentDepositoPage;
