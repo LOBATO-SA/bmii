@@ -52,6 +52,19 @@ const AgentDepositoPage = () => {
 
     const [currentUser, setCurrentUser] = useState<any>(null);
 
+    // Initialize User from LocalStorage
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const parsedUser = JSON.parse(storedUser);
+                setCurrentUser(parsedUser);
+            } catch (e) {
+                console.error('Error parsing user from local storage', e);
+            }
+        }
+    }, []);
+
     // Fetch Farmers only
     useEffect(() => {
         fetch('/api/farmers')
@@ -161,29 +174,189 @@ const AgentDepositoPage = () => {
     };
     */
 
+    const generateDepositReceipt = async (deposits: any[], farmer: any, agent: any) => {
+        const doc = new jsPDF();
+
+        const drawPage = async (isCopy: boolean) => {
+            // --- Header ---
+            doc.setFillColor(26, 4, 78); // #1a044e
+            doc.rect(0, 0, 210, 40, 'F');
+
+            try {
+                // Load BMII Logo (Try to load if available, else fallback)
+                const logoUrl = '/bmii.png';
+                const logoImage = await new Promise<string>((resolve, reject) => {
+                    const img = new Image();
+                    img.src = logoUrl;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        } else {
+                            reject(new Error('Canvas context failed'));
+                        }
+                    };
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                });
+
+                // Add Logo
+                const imgWidth = 20;
+                const imgHeight = 20;
+                doc.addImage(logoImage, 'PNG', 95, 5, imgWidth, imgHeight);
+            } catch (error) {
+                // Fallback text
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(22);
+                doc.text('BMII', 105, 20, { align: 'center' });
+            }
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.text('BANCO DE MERCADORIA DO INVESTIMENTO INTEGRADO', 105, 32, { align: 'center' });
+
+            // --- Title ---
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('COMPROVATIVO DE DEPÓSITO', 105, 55, { align: 'center' });
+
+            if (isCopy) {
+                doc.setFontSize(10);
+                doc.setTextColor(150);
+                doc.text('(DUPLICADO - VIA DO AGENTE)', 105, 62, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+            } else {
+                doc.setFontSize(10);
+                doc.setTextColor(150);
+                doc.text('(ORIGINAL - VIA DO AGRICULTOR)', 105, 62, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+            }
+
+            // --- Details ---
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+
+            const dateStr = new Date().toLocaleString('pt-AO');
+
+            doc.text(`DATA: ${dateStr}`, 20, 75);
+            doc.text(`AGRICULTOR: ${farmer.nome.toUpperCase()} (BI: ${farmer.bi})`, 20, 82);
+            doc.text(`AGENTE: ${agent.nome.toUpperCase()}`, 20, 89);
+
+            // --- Items Table ---
+            let yPos = 100;
+
+            // Header
+            doc.setFillColor(240, 240, 240);
+            doc.rect(20, yPos - 5, 170, 8, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.text('PRODUTO', 25, yPos);
+            doc.text('QTD (Kg)', 85, yPos);
+            doc.text('QUALIDADE', 110, yPos);
+            doc.text('PREÇO UNIT.', 140, yPos);
+            doc.text('TOTAL', 170, yPos);
+
+            yPos += 10;
+            doc.setFont('helvetica', 'normal');
+
+            let grandTotal = 0;
+
+            deposits.forEach((dep) => {
+                const total = dep.quantidade * dep.precoFinalAplicado;
+                grandTotal += total;
+
+                doc.text(dep.produtoNome, 25, yPos);
+                doc.text(dep.quantidade.toString(), 85, yPos);
+                doc.text(dep.qualidade, 110, yPos);
+                doc.text(`${dep.precoFinalAplicado.toLocaleString('pt-AO')} Kz`, 140, yPos);
+                doc.text(`${total.toLocaleString('pt-AO')} Kz`, 170, yPos);
+
+                yPos += 8;
+            });
+
+            // --- Grand Total ---
+            yPos += 5;
+            doc.setLineWidth(0.5);
+            doc.line(20, yPos, 190, yPos);
+            yPos += 10;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('TOTAL CREDITADO:', 120, yPos, { align: 'right' });
+            doc.text(`${grandTotal.toLocaleString('pt-AO')} Kz`, 170, yPos);
+
+            // --- Footer / Signatures ---
+            yPos = 240;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Eu, abaixo assinado, confirmo a entrega das mercadorias acima descritas.', 105, yPos - 15, { align: 'center' });
+
+            // Lines
+            doc.line(30, yPos, 90, yPos); // Farmer
+            doc.line(120, yPos, 180, yPos); // Agent
+
+            doc.setFontSize(8);
+            doc.text(farmer.nome.toUpperCase(), 60, yPos + 5, { align: 'center', maxWidth: 50 });
+            doc.text('(AGRICULTOR)', 60, yPos + 10, { align: 'center' });
+
+            doc.text(agent.nome.toUpperCase(), 150, yPos + 5, { align: 'center', maxWidth: 50 });
+            doc.text('(AGENTE BMII)', 150, yPos + 10, { align: 'center' });
+
+            doc.setTextColor(150);
+            doc.text(`Ref: ${Date.now()}`, 105, 280, { align: 'center' });
+        };
+
+        // Page 1: Original
+        await drawPage(false);
+
+        // Page 2: Duplicate
+        doc.addPage();
+        await drawPage(true);
+
+        doc.save(`Recibo_Deposito_${farmer.nome}_${Date.now()}.pdf`);
+    };
+
     const handleSubmit = async () => {
-        if (!currentUser || !selectedFarmer || selectedProducts.length === 0) return;
+        console.log('handleSubmit called', { currentUser, selectedFarmer, productsLen: selectedProducts.length });
 
-        // Validation: Verify if all products have weight > 0
-        const invalidProducts = selectedProducts.filter(p => {
-            const prodId = p.id || (p as any)._id;
-            return !weights[prodId] || weights[prodId] <= 0;
-        });
-
-        if (invalidProducts.length > 0) {
-            return alert(`Por favor, insira o peso para: ${invalidProducts.map(p => p.nome).join(', ')}`);
+        if (!currentUser) {
+            alert('Erro: Sessão de utilizador não encontrada. Tente fazer login novamente.');
+            return;
+        }
+        if (!selectedFarmer) {
+            alert('Erro: Nenhum agricultor selecionado.');
+            return;
+        }
+        if (selectedProducts.length === 0) {
+            alert('Erro: Nenhum produto selecionado.');
+            return;
         }
 
         setLoading(true);
         try {
+            const depositPayloads: any[] = [];
+
             const promises = selectedProducts.map(product => {
                 const prodId = product.id || (product as any)._id;
                 const weight = weights[prodId];
                 const quality = qualities[prodId] || 'A';
                 const price = customPrices[prodId] || product.precoReferencia || 0;
 
+                // Determine final price factor locally for receipt precognition (backend also does this)
+                const factor = quality === 'A' ? 1 : quality === 'B' ? 0.9 : 0.8;
+                const finalPrice = price * factor;
+
                 // Check if ID is virtual (starts with 'comm-')
                 const isVirtual = prodId.toString().startsWith('comm-');
+
+                // Validate Price > 0
+                if (price <= 0) {
+                    throw new Error(`Preço inválido para o produto ${product.nome}. Insira um valor maior que 0.`);
+                }
 
                 const payload = {
                     agricultorId: selectedFarmer.id || (selectedFarmer as any)._id,
@@ -195,32 +368,48 @@ const AgentDepositoPage = () => {
                     precoBase: price
                 };
 
+                // Store payload info for receipt generation locally 
+                // (we use local calculation for immediate receipt to avoid waiting for individual API responses if we want to batch, 
+                // but here we wait for all. We can reconstruct 'deposits' list for the PDF from inputs)
+                depositPayloads.push({
+                    produtoNome: product.nome,
+                    quantidade: weight,
+                    qualidade: quality,
+                    precoFinalAplicado: finalPrice
+                });
+
                 return fetch('/api/deposits', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                }).then(res => res.json());
+                }).then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Erro na API');
+                    return data;
+                });
             });
 
             const results = await Promise.all(promises);
-            const failures = results.filter(r => !r.success);
+            // If Promise.all throws, it goes to catch. If individual fetches return success:false inside simple response, we filter.
+            // But here I changed to throw on error inside map, so catch handles it.
 
-            if (failures.length === 0) {
-                alert('Todos os depósitos foram realizados com sucesso!');
-                setStep(1);
-                setSelectedFarmer(null);
-                setSelectedProducts([]);
-                setWeights({});
-                setQualities({});
-                setTotalValue(0);
-            } else {
-                console.error('Falhas:', failures);
-                alert(`Alguns depósitos falharam. Sucesso: ${results.length - failures.length}/${results.length}. Verifique o console.`);
-            }
+            // Generate PDF Receipt
+            await generateDepositReceipt(depositPayloads, selectedFarmer, currentUser);
 
-        } catch (error) {
+            alert('Depósito realizado com sucesso! O comprovativo foi gerado.');
+
+            // Reset Form
+            setStep(1);
+            setSelectedFarmer(null);
+            setSelectedProducts([]);
+            setWeights({});
+            setQualities({});
+            setCustomPrices({}); // Clear custom prices too
+            setTotalValue(0);
+
+        } catch (error: any) {
             console.error(error);
-            alert('Erro de conexão');
+            alert(error.message || 'Erro ao processar depósito');
         } finally {
             setLoading(false);
         }
