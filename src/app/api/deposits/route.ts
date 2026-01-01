@@ -88,11 +88,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'Agricultor não encontrado' }, { status: 404 });
         }
 
-        farmer.saldo = (farmer.saldo || 0) + valorTotal;
         farmer.estoque.push({
             produto: productDetails.nome,
             quantidade,
             qualidade,
+            precoAquisicao: precoFinalAplicado,
             dataEntrada: new Date()
         });
 

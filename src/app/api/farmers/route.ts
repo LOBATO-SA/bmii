@@ -12,10 +12,38 @@ export async function GET(request: Request) {
 
     try {
         const query = agentId ? { agenteResponsavel: agentId } : {};
-        const farmers = await Farmer.find(query).sort({ dataRegisto: -1 });
+        // Convert to plain object to allow modification
+        const farmersDocs = await Farmer.find(query).sort({ dataRegisto: -1 }).lean();
 
-        return NextResponse.json({ success: true, data: farmers });
+        // Populate stock prices from Deposits if missing (Backwards Compatibility)
+        // Note: For large datasets this should be optimized or done on-demand
+        const farmersWithPrices = await Promise.all(farmersDocs.map(async (farmer: any) => {
+            if (farmer.estoque && farmer.estoque.length > 0) {
+                const updatedEstoque = await Promise.all(farmer.estoque.map(async (item: any) => {
+                    // If price exists (new data), use it. Else fetch from history.
+                    if (item.precoAquisicao) return item;
+
+                    // Fetch latest deposit for this product/farmer
+                    // dynamically import Deposit to avoid circular deps if any (though safe here)
+                    const Deposit = (await import('@/models/Deposit')).default;
+                    const lastDeposit = await Deposit.findOne({
+                        agricultor: farmer._id,
+                        'produto.nome': item.produto
+                    }).sort({ dataDeposito: -1 });
+
+                    return {
+                        ...item,
+                        precoAquisicao: lastDeposit ? lastDeposit.precoFinalAplicado : 0
+                    };
+                }));
+                return { ...farmer, estoque: updatedEstoque };
+            }
+            return farmer;
+        }));
+
+        return NextResponse.json({ success: true, data: farmersWithPrices });
     } catch (error: any) {
+        console.error('Error in GET /api/farmers:', error);
         return NextResponse.json(
             { success: false, error: 'Erro ao buscar agricultores' },
             { status: 400 }

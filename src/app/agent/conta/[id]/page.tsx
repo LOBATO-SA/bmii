@@ -27,16 +27,46 @@ const FarmerDetailsPage = () => {
             const farmerRes = await fetch(`/api/farmers/${id}`);
             const farmerData = await farmerRes.json();
 
-            // 2. Fetch Deposits History
-            const depositsRes = await fetch(`/api/deposits?agricultorId=${id}`);
+            // 2. Fetch Deposits & Withdrawals History
+            const [depositsRes, withdrawalsRes] = await Promise.all([
+                fetch(`/api/deposits?agricultorId=${id}`),
+                fetch(`/api/withdrawals?agricultorId=${id}`)
+            ]);
+
             const depositsData = await depositsRes.json();
+            const withdrawalsData = await withdrawalsRes.json();
 
             if (farmerData.success) {
                 setFarmer(farmerData.data);
             }
+
+            // Merge Transactions
+            let allTransactions: any[] = [];
+
             if (depositsData.success) {
-                setDeposits(depositsData.data);
+                const deps = depositsData.data.map((d: any) => ({
+                    ...d,
+                    type: 'deposit',
+                    date: d.dataDeposito,
+                    amount: d.valorTotal
+                }));
+                allTransactions = [...allTransactions, ...deps];
             }
+
+            if (withdrawalsData.success) {
+                const wds = withdrawalsData.data.map((w: any) => ({
+                    ...w,
+                    type: 'withdrawal',
+                    date: w.dataLevantamento, // Ensure model has this or createdAt
+                    amount: w.valorDebitado
+                }));
+                allTransactions = [...allTransactions, ...wds];
+            }
+
+            // Sort by Date Descending
+            allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            setDeposits(allTransactions); // Using existing state name for simplicity, or refactor to setTransactions
         } catch (error) {
             console.error('Erro ao carregar dados', error);
         } finally {
@@ -47,7 +77,10 @@ const FarmerDetailsPage = () => {
     if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Carregando dados do agricultor...</div>;
     if (!farmer) return <div style={{ padding: 40, textAlign: 'center' }}>Agricultor não encontrado.</div>;
 
-    const totalDeposited = deposits.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
+    const totalDeposited = deposits
+        .filter(t => t.type === 'deposit')
+        .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
     const stockCount = farmer.estoque ? farmer.estoque.length : 0;
 
     return (
@@ -135,16 +168,17 @@ const FarmerDetailsPage = () => {
                     )}
                 </div>
 
-                {/* History Section */}
+                {/* Unified History Section */}
                 <div className="section-card wide">
-                    <h3>Histórico de Depósitos</h3>
+                    <h3>Histórico de Movimentos</h3>
                     {deposits.length === 0 ? (
-                        <p className="empty-text">Nenhum depósito realizado.</p>
+                        <p className="empty-text">Nenhuma movimentação registrada.</p>
                     ) : (
                         <table className="history-table">
                             <thead>
                                 <tr>
                                     <th>Data</th>
+                                    <th>Tipo</th>
                                     <th>Produto</th>
                                     <th>Qtd.</th>
                                     <th>Valor</th>
@@ -152,18 +186,24 @@ const FarmerDetailsPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {deposits.map(dep => (
-                                    <tr key={dep._id}>
+                                {deposits.map((trans: any, idx) => (
+                                    <tr key={trans._id || idx}>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                 <Calendar size={14} color="#9ca3af" />
-                                                {new Date(dep.dataDeposito).toLocaleDateString()}
+                                                {new Date(trans.date).toLocaleDateString()}
                                             </div>
                                         </td>
-                                        <td>{dep.produto?.nome || 'Produto'}</td>
-                                        <td>{dep.quantidade} kg</td>
-                                        <td style={{ fontWeight: 600, color: '#059669' }}>
-                                            {dep.valorTotal?.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
+                                        <td>
+                                            <span className={`type-badge ${trans.type}`}>
+                                                {trans.type === 'deposit' ? 'Depósito' : 'Levantamento'}
+                                            </span>
+                                        </td>
+                                        <td>{trans.produto?.nome || trans.produtoNome || 'Produto'}</td>
+                                        <td>{trans.quantidade} kg</td>
+                                        <td style={{ fontWeight: 600, color: trans.type === 'deposit' ? '#059669' : '#dc2626' }}>
+                                            {trans.type === 'withdrawal' ? '-' : '+'}
+                                            {trans.amount?.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                                         </td>
                                         <td><span className="status-badge success">Concluído</span></td>
                                     </tr>
@@ -432,6 +472,17 @@ const StyledPage = styled.div`
         border-radius: 12px;
         font-size: 11px;
         font-weight: 700;
+    }
+
+    .type-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        text-transform: uppercase;
+        
+        &.deposit { background: #d1fae5; color: #059669; }
+        &.withdrawal { background: #fee2e2; color: #dc2626; }
     }
 `;
 

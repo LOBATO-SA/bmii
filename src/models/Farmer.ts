@@ -41,6 +41,7 @@ const FarmerSchema = new mongoose.Schema({
         produto: { type: String, required: true },
         quantidade: { type: Number, required: true }, // em Kg
         qualidade: { type: String, enum: ['A', 'B', 'C'], default: 'A' },
+        precoAquisicao: { type: Number }, // Preço por Kg no ato do depósito
         dataEntrada: { type: Date, default: Date.now }
     }]
 });
