@@ -7,13 +7,136 @@ import { ArrowLeft, Wallet, Package, TrendingUp, Calendar, MapPin, Phone, User a
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Download } from 'lucide-react';
+
 const FarmerDetailsPage = () => {
     const params = useParams();
     const id = params.id as string;
 
     const [farmer, setFarmer] = useState<any>(null);
-    const [deposits, setDeposits] = useState<any[]>([]);
+    const [deposits, setDeposits] = useState<any[]>([]); // This actually holds mixed transactions now
     const [loading, setLoading] = useState(true);
+
+    const getBase64ImageFromURL = (url: string) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.setAttribute('crossOrigin', 'anonymous');
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL('image/png');
+                resolve(dataURL);
+            };
+            img.onerror = error => reject(error);
+            img.src = url;
+        });
+    };
+
+    const generateStatementPDF = async () => {
+        const doc = new jsPDF();
+
+        // --- Header ---
+        doc.setFillColor(26, 4, 78); // #1a044e
+        doc.rect(0, 0, 210, 40, 'F');
+
+        // Logo
+        try {
+            const logoData = await getBase64ImageFromURL('/bmii.png'); // Ensure this image exists in public folder
+            doc.addImage(logoData as string, 'PNG', 20, 10, 20, 20); // Adjust dimensions as needed
+            // Move text to the right of logo
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('BMII', 45, 22);
+        } catch (e) {
+            // Fallback if logo fails
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('BMII', 20, 22);
+        }
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('EXTRATO DE CONTA', 45, 30);
+
+        // Date
+        const today = new Date().toLocaleDateString('pt-AO');
+        doc.text(`Data de Emissão: ${today}`, 150, 20);
+
+        // --- Farmer Info ---
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Agricultor: ${farmer.nome || 'N/A'}`, 20, 55);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Telefone: ${farmer.telefone || 'N/A'}`, 20, 62);
+        doc.text(`BI: ${farmer.bi || 'N/A'}`, 20, 69);
+
+        const location = [farmer.provincia, farmer.municipio].filter(Boolean).join(', ');
+        doc.text(`Localização: ${location || 'Não informada'}`, 20, 76);
+
+        // --- Balance Summary ---
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(140, 50, 50, 25, 3, 3, 'F');
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Saldo Disponível', 145, 58);
+
+        doc.setFontSize(14);
+        doc.setTextColor(5, 150, 105); // Green
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${(farmer.saldo || 0).toLocaleString('pt-AO')} Kz`, 145, 68);
+
+        // --- Transactions Table ---
+        const tableData = deposits.map(t => {
+            const isCredit = t.type === 'deposit' || t.type === 'sale';
+            const sign = isCredit ? '+' : '-';
+            const label = t.type === 'deposit' ? 'Depósito' : t.type === 'sale' ? 'Venda' : 'Levantamento';
+
+            // Safe unit display
+            const unit = t.produto && t.produto.unidade ? t.produto.unidade : 'Kg';
+            const productDesc = t.produto ? `${t.produto.nome} (${t.quantidade} ${unit})` : t.type === 'sale' ? 'Venda de Produto' : '-';
+
+            return [
+                new Date(t.date).toLocaleDateString('pt-AO'),
+                label,
+                productDesc,
+                {
+                    content: `${sign} ${t.amount.toLocaleString('pt-AO')} Kz`,
+                    styles: { textColor: isCredit ? [5, 150, 105] as [number, number, number] : [239, 68, 68] as [number, number, number] }
+                }
+            ];
+        });
+
+        autoTable(doc, {
+            startY: 90,
+            head: [['Data', 'Tipo', 'Descrição', 'Valor']],
+            body: tableData,
+            headStyles: { fillColor: [26, 4, 78], textColor: 255, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 10 },
+            alternateRowStyles: { fillColor: [248, 250, 252] },
+            columnStyles: {
+                3: { halign: 'right', fontStyle: 'bold' }
+            }
+        });
+
+        // Footer
+        const finalY = (doc as any).lastAutoTable.finalY + 20;
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('Este documento foi gerado eletronicamente pela plataforma BMII.', 105, 280, { align: 'center' });
+
+        const safeName = (farmer.nome || 'extrato').replace(/\s+/g, '_');
+        doc.save(`extrato_${safeName}_${Date.now()}.pdf`);
+    };
 
     useEffect(() => {
         if (id) {
@@ -102,6 +225,10 @@ const FarmerDetailsPage = () => {
                     <ArrowLeft size={18} /> Voltar
                 </Link>
                 <h1>Detalhes da Conta</h1>
+                <button onClick={generateStatementPDF} className="statement-btn">
+                    <Download size={18} />
+                    <span>Baixar Extrato</span>
+                </button>
             </div>
 
             {/* Profile Header */}
@@ -249,6 +376,28 @@ const StyledPage = styled.div`
             margin: 0;
         }
 
+        .statement-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #1a044e;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+
+            &:hover {
+                background: #f8fafc;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+            }
+        }
+    
         .back-btn {
             display: flex;
             align-items: center;
