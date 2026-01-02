@@ -14,6 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import styled from 'styled-components';
+import { compressImage } from '@/utils/compressImage';
 
 interface Produto {
   id: string;
@@ -394,14 +395,15 @@ const AdminProdutosPage = () => {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setFormData({ ...formData, imagemUrl: reader.result as string });
-                      };
-                      reader.readAsDataURL(file);
+                      try {
+                        const compressed = await compressImage(file);
+                        setFormData({ ...formData, imagemUrl: compressed });
+                      } catch (err) {
+                        console.error('Error compressing image', err);
+                      }
                     }
                   }}
                   className="file-input"

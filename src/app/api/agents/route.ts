@@ -46,7 +46,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const agent = await Agent.create(body);
+        const agent: any = await Agent.create(body);
 
         return NextResponse.json({
             success: true,

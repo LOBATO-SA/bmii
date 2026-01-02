@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { Camera, Upload, UserPlus, Save, X, Search, MapPin, Phone, User, CheckCircle, FileText, LayoutGrid, List, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import Link from 'next/link';
+import { compressImage } from '@/utils/compressImage';
 
 interface Farmer {
     id: string;
@@ -106,18 +107,18 @@ const AgentContaPage = () => {
             }
         }
     };
-
     // File Upload Logic
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                setPhotoPreview(result);
-                setFormData({ ...formData, fotoUrl: result });
-            };
-            reader.readAsDataURL(file);
+            try {
+                const compressed = await compressImage(file);
+                setPhotoPreview(compressed);
+                setFormData({ ...formData, fotoUrl: compressed });
+            } catch (error) {
+                console.error("Compression error", error);
+                alert("Erro ao processar imagem.");
+            }
         }
     };
 

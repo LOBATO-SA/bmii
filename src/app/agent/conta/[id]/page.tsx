@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { Use } from 'lucide-react'; // Typo fix later if needed, but using standard imports below
+import { User } from 'lucide-react'; // Typo fix later if needed, but using standard imports below
 import { ArrowLeft, Wallet, Package, TrendingUp, Calendar, MapPin, Phone, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -27,14 +27,16 @@ const FarmerDetailsPage = () => {
             const farmerRes = await fetch(`/api/farmers/${id}`);
             const farmerData = await farmerRes.json();
 
-            // 2. Fetch Deposits & Withdrawals History
-            const [depositsRes, withdrawalsRes] = await Promise.all([
+            // 2. Fetch Deposits, Withdrawals & Sales History
+            const [depositsRes, withdrawalsRes, salesRes] = await Promise.all([
                 fetch(`/api/deposits?agricultorId=${id}`),
-                fetch(`/api/withdrawals?agricultorId=${id}`)
+                fetch(`/api/withdrawals?agricultorId=${id}`),
+                fetch(`/api/sales?agricultorId=${id}`)
             ]);
 
             const depositsData = await depositsRes.json();
             const withdrawalsData = await withdrawalsRes.json();
+            const salesData = await salesRes.json();
 
             if (farmerData.success) {
                 setFarmer(farmerData.data);
@@ -61,6 +63,16 @@ const FarmerDetailsPage = () => {
                     amount: w.valorDebitado
                 }));
                 allTransactions = [...allTransactions, ...wds];
+            }
+
+            if (salesData.success) {
+                const sales = salesData.data.map((s: any) => ({
+                    ...s,
+                    type: 'sale',
+                    date: s.dataVenda,
+                    amount: s.valorTotal
+                }));
+                allTransactions = [...allTransactions, ...sales];
             }
 
             // Sort by Date Descending
@@ -196,12 +208,12 @@ const FarmerDetailsPage = () => {
                                         </td>
                                         <td>
                                             <span className={`type-badge ${trans.type}`}>
-                                                {trans.type === 'deposit' ? 'Depósito' : 'Levantamento'}
+                                                {trans.type === 'deposit' ? 'Depósito' : trans.type === 'withdrawal' ? 'Levantamento' : 'Venda'}
                                             </span>
                                         </td>
                                         <td>{trans.produto?.nome || trans.produtoNome || 'Produto'}</td>
                                         <td>{trans.quantidade} kg</td>
-                                        <td style={{ fontWeight: 600, color: trans.type === 'deposit' ? '#059669' : '#dc2626' }}>
+                                        <td style={{ fontWeight: 600, color: trans.type === 'withdrawal' ? '#dc2626' : (trans.type === 'sale' ? '#1e40af' : '#059669') }}>
                                             {trans.type === 'withdrawal' ? '-' : '+'}
                                             {trans.amount?.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' })}
                                         </td>
@@ -483,6 +495,7 @@ const StyledPage = styled.div`
         
         &.deposit { background: #d1fae5; color: #059669; }
         &.withdrawal { background: #fee2e2; color: #dc2626; }
+        &.sale { background: #dbeafe; color: #1e40af; } /* Blue for Sales */
     }
 `;
 
