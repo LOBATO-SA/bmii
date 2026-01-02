@@ -30,6 +30,8 @@ export default function AdminDashboard() {
   const [lowStockProducts, setLowStockProducts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [salesAnalysis, setSalesAnalysis] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -38,6 +40,7 @@ export default function AdminDashboard() {
         if (data.success) {
           setMetrics(data.data.metrics);
           setLowStockProducts(data.data.alerts);
+          setSalesAnalysis(data.data.salesAnalysis || []);
         }
       } catch (error) {
         console.error('Erro ao carregar dashboard', error);
@@ -48,13 +51,6 @@ export default function AdminDashboard() {
 
     fetchDashboardData();
   }, []);
-
-  // Mock data for sales (to be implemented later)
-  const salesData = [
-    { produto: 'Milho', vendas: 450, valor: 67500, tendencia: '+12%' },
-    { produto: 'Feijão', vendas: 320, valor: 64000, tendencia: '+8%' },
-    { produto: 'Arroz', vendas: 180, valor: 32400, tendencia: '-3%' },
-  ];
 
   return (
     <StyledDashboard>
@@ -91,7 +87,7 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-content">
             <span className="stat-label">AGRICULTORES</span>
-            <span className="stat-value">145</span>
+            <span className="stat-value">{metrics.totalFarmers}</span>
           </div>
         </div>
 
@@ -101,7 +97,7 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-content">
             <span className="stat-label">VENDAS TOTAIS</span>
-            <span className="stat-value">163.9K</span>
+            <span className="stat-value">{metrics.totalSales.toLocaleString('pt-AO', { maximumFractionDigits: 0 })}</span>
             <span className="stat-unit">Kz</span>
           </div>
         </div>
@@ -119,25 +115,28 @@ export default function AdminDashboard() {
           </div>
 
           <div className="sales-list">
-            {salesData.map((item, index) => (
-              <div key={index} className="sales-item">
-                <div className="sales-info">
-                  <span className="product-name">{item.produto}</span>
-                  <span className="sales-count">{item.vendas} unidades vendidas</span>
+            {salesAnalysis.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>Sem vendas registradas</div>
+            ) : (
+              salesAnalysis.map((item, index) => (
+                <div key={index} className="sales-item">
+                  <div className="sales-info">
+                    <span className="product-name">{item.produto}</span>
+                    <span className="sales-count">{item.vendas} Kg vendidos</span>
+                  </div>
+                  <div className="sales-metrics">
+                    <span className="sales-value">{item.valor.toLocaleString('pt-AO')} Kz</span>
+                    {/* Trend is placeholder for now */}
+                    {/* <span className="trend positive">...</span> */}
+                  </div>
                 </div>
-                <div className="sales-metrics">
-                  <span className="sales-value">{item.valor.toLocaleString('pt-AO')} Kz</span>
-                  <span className={`trend ${item.tendencia.startsWith('+') ? 'positive' : 'negative'}`}>
-                    {item.tendencia}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="panel-footer">
             <span className="total-label">RECEITA TOTAL</span>
-            <span className="total-value">163.900 Kz</span>
+            <span className="total-value">{metrics.totalSales.toLocaleString('pt-AO')} Kz</span>
           </div>
         </div>
 

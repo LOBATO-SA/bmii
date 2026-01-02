@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Product from '@/models/Product';
 import Agent from '@/models/Agent';
+import Sale from '@/models/Sale';
+import Farmer from '@/models/Farmer'; // Ensure Farmer model is imported
 
 export async function GET() {
     await dbConnect();
@@ -10,12 +12,40 @@ export async function GET() {
         // 1. Fetch Basic Counts
         const totalAgents = await Agent.countDocuments();
         const activeProducts = await Product.countDocuments({ status: 'Ativo' });
+        const totalFarmers = await Farmer.countDocuments();
 
-        // 2. Mock Data for Not-Yet-Implemented Features
-        const totalFarmers = 0; // To be implemented with Farmer Schema
-        const totalSales = 0;   // To be implemented with Sales Schema
+        // 2. Total Sales Value
+        const salesStats = await Sale.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalValue: { $sum: "$valorTotal" }
+                }
+            }
+        ]);
+        const totalSales = salesStats.length > 0 ? salesStats[0].totalValue : 0;
 
-        // 3. Stock Alerts Logic
+        // 3. Sales Analysis (Top Products)
+        const salesAnalysisRaw = await Sale.aggregate([
+            {
+                $group: {
+                    _id: "$produto.nome",
+                    vendas: { $sum: "$quantidade" }, // Total Quantity
+                    valor: { $sum: "$valorTotal" }   // Total Revenue
+                }
+            },
+            { $sort: { valor: -1 } }, // Sort by revenue desc
+            { $limit: 5 }
+        ]);
+
+        const salesAnalysis = salesAnalysisRaw.map(item => ({
+            produto: item._id,
+            vendas: item.vendas,
+            valor: item.valor,
+            tendencia: 'N/A' // Placeholder, requires historical data for real trend
+        }));
+
+        // 4. Stock Alerts Logic
         // Threshold: less than 100 units (e.g., kg) is considered 'low', 0 is 'critical'
         const products = await Product.find({ status: 'Ativo' }).select('nome quantidade unidade');
 
@@ -40,6 +70,7 @@ export async function GET() {
                     totalFarmers,
                     totalSales
                 },
+                salesAnalysis,
                 alerts: lowStockProducts
             }
         });
