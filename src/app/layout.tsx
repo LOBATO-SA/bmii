@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 
 import StyledComponentsRegistry from '@/lib/registry';
 
+import { CartProvider } from '@/context/CartContext';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,7 +32,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <StyledComponentsRegistry>
-          {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </StyledComponentsRegistry>
       </body>
     </html>
